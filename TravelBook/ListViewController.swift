@@ -1,0 +1,104 @@
+//
+//  ListViewController.swift
+//  TravelBook
+//
+//  Created by Berkay on 28.06.2022.
+//
+
+import UIKit
+import CoreData
+
+class ListViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+    
+    @IBOutlet weak var tableView: UITableView!
+    var titleArray = [String]()
+    var idArray = [UUID]()
+    
+    var chosenTitle = ""
+    var choseTitleId : UUID?
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        navigationController?.navigationBar.topItem?.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: UIBarButtonItem.SystemItem.add, target: self, action: #selector(addButtonCliked))
+
+        tableView.delegate = self
+        tableView.dataSource = self
+        
+        getData()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        NotificationCenter.default.addObserver(self, selector: #selector(getData), name: NSNotification.Name("newPlace"), object: nil)
+    }
+    
+    @objc func getData(){
+        
+        let appDelegate = UIApplication.shared.delegate as! AppDelegate
+        let context = appDelegate.persistentContainer.viewContext
+        
+        let request = NSFetchRequest<NSFetchRequestResult>(entityName: "Places")
+        request.returnsObjectsAsFaults = false
+        
+        do{
+            let result = try context.fetch(request)
+            
+            if result.count > 0 {
+                self.titleArray.removeAll(keepingCapacity: false)
+                self.idArray.removeAll(keepingCapacity: false)
+                
+                for result in result as! [NSManagedObject] {
+                    
+                    if let title = result.value(forKey: "title") as? String {
+                        self.titleArray.append(title)
+                    }
+                    
+                    if let id = result.value(forKey: "id") as? UUID {
+                        self.idArray.append(id)
+                    }
+                    
+                    tableView.reloadData()
+                }
+            }
+        }
+        catch{
+            let alert = UIAlertController(title: "Error", message: "Application error", preferredStyle: UIAlertController.Style.alert)
+            let button = UIAlertAction(title: "OK", style: UIAlertAction.Style.default, handler: nil)
+            alert.addAction(button)
+            self.present(alert, animated: true)
+        }
+        
+        
+    }
+    
+    @objc func addButtonCliked(){
+        chosenTitle = ""
+        performSegue(withIdentifier: "toViewController", sender: nil)
+    }
+    
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return titleArray.count
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = UITableViewCell()
+        cell.textLabel?.text = titleArray[indexPath.row]
+        return cell
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        chosenTitle = titleArray[indexPath.row]
+        choseTitleId = idArray[indexPath.row]
+        performSegue(withIdentifier: "toViewController", sender: nil)
+    }
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        if segue.identifier == "toViewController"{
+            let destinationVC = segue.destination as! ViewController
+            destinationVC.selectedTitle = chosenTitle
+            destinationVC.selectedTitleId = choseTitleId
+        }
+    }
+
+
+}
